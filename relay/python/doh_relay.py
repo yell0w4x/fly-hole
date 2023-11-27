@@ -59,6 +59,8 @@ async def dns_relay(dns_req):
 
 
 def create_view():
+    DNS_MESSAGE_TYPE = 'application/dns-message'
+
     routes = web.RouteTableDef()
 
     @routes.view('/')
@@ -68,12 +70,12 @@ def create_view():
             if 'dns' not in request.query:
                 raise HTTPBadRequest()
 
-            dns_req_enc = request.query['dns']
-            if not dns_req_enc:
+            dns_req_b64 = request.query['dns']
+            if not dns_req_b64:
                 raise HTTPBadRequest()
 
             try:
-                dns_req = b64decode(f"{request.query['dns']}==")
+                dns_req = b64decode(f'{dns_req_b64}==')
             except binascii.Error:
                 raise HTTPBadRequest
             else:
@@ -82,6 +84,9 @@ def create_view():
         async def post(self):
             PAYLOAD_LIMIT = 2 ** 17
             request = self.request
+            if request.content_type != DNS_MESSAGE_TYPE:
+                raise HTTPBadRequest()
+
             dns_req = await request.content.read(PAYLOAD_LIMIT)
             if not dns_req:
                 raise HTTPBadRequest()
@@ -90,7 +95,7 @@ def create_view():
 
         async def __handle(self, dns_req):
             dns_resp = await dns_relay(dns_req)
-            return web.Response(body=dns_resp, content_type='application/dns-message')
+            return web.Response(body=dns_resp, content_type=DNS_MESSAGE_TYPE)
 
     return routes
 

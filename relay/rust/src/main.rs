@@ -1,4 +1,4 @@
-use tiny_http::{Server, Response, Request, Method};
+use tiny_http::{Server, Response, Request, Method, Header};
 use http::Uri;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -11,6 +11,7 @@ use base64::{Engine as _, engine::general_purpose};
 use std::net::UdpSocket;
 use std::time::Duration;
 use std::error::Error;
+use simple_error::bail;
 
 
 fn dns_relay(dns_req: &Vec<u8>) -> Result<Vec<u8>, Box<dyn Error>>  {
@@ -29,6 +30,10 @@ fn dns_relay(dns_req: &Vec<u8>) -> Result<Vec<u8>, Box<dyn Error>>  {
 }
 
 
+const DNS_MESSAGE_TYPE: &str = "application/dns-message";
+const CONTENT_TYPE: &str = "content-type";
+
+
 fn handle_dns(dns_req: &Vec<u8>, req: Request) {
     let dns_resp: Vec<u8> = match dns_relay(&dns_req) {
         Ok(dns_resp) => dns_resp,
@@ -39,9 +44,25 @@ fn handle_dns(dns_req: &Vec<u8>, req: Request) {
     };
 
     println!("dns_req: {:?}, dns_resp: {:?}", dns_req, dns_resp);
-    let resp = Response::from_data(dns_resp);
+    let mut resp = Response::from_data(dns_resp);
+    resp.add_header(Header::from_bytes(CONTENT_TYPE.as_bytes(), DNS_MESSAGE_TYPE.as_bytes()).unwrap());
     let _ = req.respond(resp);
 }
+
+fn check_content_type(req: &Request) -> Result<(), Box<dyn Error>> {
+    let headers_list = req.headers();
+    let mut headers: HashMap<String, String> = HashMap::new();
+    for header in headers_list {
+        headers.insert(header.field.as_str().as_str().to_ascii_lowercase(), 
+            header.value.as_str().to_ascii_lowercase());
+    }
+
+    if ! headers.contains_key(CONTENT_TYPE) || headers.get(CONTENT_TYPE).unwrap() != DNS_MESSAGE_TYPE {
+        bail!("Bad request: No content-type header")
+    } else {
+        Ok(())
+    }
+} 
 
 
 fn handle_get(uri: &Uri, req: Request) {
@@ -76,6 +97,11 @@ fn handle_get(uri: &Uri, req: Request) {
 
 
 fn handle_post(mut req: Request) {
+    if check_content_type(&req).is_err() {
+        let _ = req.respond(Response::empty(400));
+        return;
+    }
+
     if req.body_length() == Some(0) {
         let _ = req.respond(Response::empty(400));
         return;

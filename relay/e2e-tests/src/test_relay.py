@@ -59,33 +59,42 @@ def wait_for_sut_up(sut):
 
 DATA = b'UDP request goes here'
 REVERSED_DATA = bytes(reversed(DATA))
+DNS_MESSAGE_TYPE = 'application/dns-message'
 
 
 @pytest.mark.parametrize('populate_error', [False])
 def test_relay_dns_packets_via_get(dns_server_mock, wait_for_sut_up, sut):
     b64_data = b64encode(DATA).replace(b'==', b'')
-    resp = requests.get(f'http://127.0.0.1:8000/?dns={b64_data.decode("utf-8")}', timeout=2)
-    resp.raise_for_status()
+    resp = requests.get(f'http://127.0.0.1:8000/', params=dict(dns=b64_data.decode("utf-8")), 
+                        headers={'accept': DNS_MESSAGE_TYPE}, timeout=2)
+    assert resp.status_code == codes.ok
     assert resp.content == REVERSED_DATA
+    assert resp.headers['content-type'] == DNS_MESSAGE_TYPE
 
 
 @pytest.mark.parametrize('populate_error', [False])
 def test_relay_dns_packets_via_post(dns_server_mock, wait_for_sut_up, sut):
-    resp = requests.post(f'http://127.0.0.1:8000/', data=DATA, timeout=2)
-    resp.raise_for_status()
+    resp = requests.post(f'http://127.0.0.1:8000/', data=DATA, 
+                         headers={'content-type': DNS_MESSAGE_TYPE, 'accept': DNS_MESSAGE_TYPE}, 
+                         timeout=2)
+    assert resp.status_code == codes.ok
     assert resp.content == REVERSED_DATA
+    assert resp.headers['content-type'] == DNS_MESSAGE_TYPE
 
 
 @pytest.mark.parametrize('populate_error', [True])
 def test_relay_must_return_bad_gateway_if_upstream_is_broken_get(dns_server_mock, wait_for_sut_up, sut):
     b64_data = b64encode(DATA).replace(b'==', b'')
-    resp = requests.get(f'http://127.0.0.1:8000/?dns={b64_data.decode("utf-8")}', timeout=6)
+    resp = requests.get(f'http://127.0.0.1:8000/', params=dict(dns=b64_data.decode("utf-8")), 
+                        headers={'accept': DNS_MESSAGE_TYPE}, timeout=6)
     assert resp.status_code == codes.bad_gateway
 
 
 @pytest.mark.parametrize('populate_error', [True])
 def test_relay_must_return_bad_gateway_if_upstream_is_broken_post(dns_server_mock, wait_for_sut_up, sut):
-    resp = requests.post(f'http://127.0.0.1:8000/', data=DATA, timeout=6)
+    resp = requests.post(f'http://127.0.0.1:8000/', data=DATA, 
+                         headers={'content-type': DNS_MESSAGE_TYPE, 'accept': DNS_MESSAGE_TYPE}, 
+                         timeout=6)
     assert resp.status_code == requests.codes.bad_gateway
 
 
@@ -94,21 +103,24 @@ def test_relay_must_return_bad_gateway_if_upstream_is_broken_post(dns_server_moc
                                  'http://127.0.0.1:8000/',
                                  'http://127.0.0.1:8000/?dns=corrupted-data'])
 def test_relay_must_return_bad_request_if_invalid_parameter_given_get(dns_server_mock, wait_for_sut_up, sut, url):
-    resp = requests.get(url, timeout=2)
+    resp = requests.get(url, headers={'accept': DNS_MESSAGE_TYPE}, timeout=2)
     assert resp.status_code == codes.bad_request
 
 
 @pytest.mark.parametrize('populate_error', [False])
 @pytest.mark.parametrize('data', [None, bytes()])
 def test_relay_must_return_bad_request_if_invalid_parameter_given_post(dns_server_mock, wait_for_sut_up, sut, data):
-    resp = requests.post('http://127.0.0.1:8000/', data=data, timeout=2)
+    resp = requests.post('http://127.0.0.1:8000/', data=data, timeout=2,
+                         headers={'content-type': DNS_MESSAGE_TYPE, 'accept': DNS_MESSAGE_TYPE})
     assert resp.status_code == codes.bad_request
 
 
 @pytest.mark.parametrize('populate_error', [False])
-@pytest.mark.parametrize('method', ['GET', 'POST'])
-def test_relay_must_return_not_found_if_unknown_url_requested(dns_server_mock, wait_for_sut_up, sut, method):
-    resp = requests.request(method, 'http://127.0.0.1:8000/asdf', timeout=2)
+@pytest.mark.parametrize('method, headers', [
+                         ('GET', {'accept': DNS_MESSAGE_TYPE}), 
+                         ('POST', {'content-type': DNS_MESSAGE_TYPE, 'accept': DNS_MESSAGE_TYPE})])
+def test_relay_must_return_not_found_if_unknown_url_requested(dns_server_mock, wait_for_sut_up, sut, method, headers):
+    resp = requests.request(method, 'http://127.0.0.1:8000/asdf', headers=headers, timeout=2)
     assert resp.status_code == codes.not_found
 
 
@@ -126,3 +138,9 @@ def test_relay_must_return_not_found_if_unknown_url_requested(dns_server_mock, w
 def test_relay_must_allow_only_get_and_post_methods(dns_server_mock, wait_for_sut_up, sut, method, expected_status_codes):
     resp = requests.request(method, 'http://127.0.0.1:8000/', timeout=2)
     assert resp.status_code in expected_status_codes
+
+
+@pytest.mark.parametrize('populate_error', [False])
+def test_relay_must_return_bad_request_if_invalid_or_absent_content_type_post(dns_server_mock, wait_for_sut_up, sut):
+    resp = requests.post(f'http://127.0.0.1:8000/', headers={'accept': DNS_MESSAGE_TYPE}, data=DATA, timeout=2)
+    assert resp.status_code == codes.bad_request
