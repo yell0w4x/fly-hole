@@ -2,8 +2,9 @@
 
 A publicly available [Pi-Hole](https://pi-hole.net) on [Fly.io](https://fly.io).
 
-Feel free to use instance of DNS-over-HTTPS server (https://adsfree.fly.dev) I deployed for myself.
+Feel free to use DNS-over-HTTPS https://adsfree.fly.dev I deployed for myself.
 Test it by https://d3ward.github.io/toolz/adblock.html.
+For ease install on iOS https://yell0w4x.github.io/fly-hole/.
 
 ```
 $ ./deploy --help
