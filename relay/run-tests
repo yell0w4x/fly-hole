@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+
+
+OS_NAME="$(uname -s)"
+case "${OS_NAME}" in
+    Darwin*)
+        realpath() {
+            [[ $1 = /* ]] && echo "$1" || echo "${PWD}/${1#./}"
+        }
+    ;;
+esac
+
+
+SCRIPT_DIR=$(realpath "$(dirname "${0}")")
+ARGS=(-v)
+
+usage() {
+cat << EOF
+Run e2e tests.
+
+Usage:
+    ${0} [OPTIONS] [EXTRA_ARGS]
+
+All the EXTRA_ARGS are passed to pytest
+
+Options:
+    --python    Run tests for python based SUT (set by default)
+    --rust      Run tests for rust based SUT
+    --debug     Build and use debug version of rust based relay
+    --debug-sh  Set bash 'x' option
+    --help      Show help message
+EOF
+}
+
+# set -eux
+
+while [ "${#}" -gt 0 ]; do
+    case "${1}" in
+        -h|--help)
+            usage
+            exit
+            ;;
+
+        --debug-sh)
+            set -x
+            ;;
+
+        --debug)
+            DEBUG=1
+            ARGS+=(--debug-sut)
+            ;;
+
+        --python)
+            PYTHON=1
+            ;;
+
+        --rust)
+            RUST=1
+            ;;
+
+        *)
+            ARGS+=("${1}")
+            ;;
+    esac
+    
+   shift
+done
+
+set -eEu
+
+ARTIFACTS_DIR="${SCRIPT_DIR}/.artifacts"
+
+remove_container() {
+    if [ -n "$(docker ps -a | grep dns-relay-e2e-test-instance)" ]; then
+        mkdir -p "${ARTIFACTS_DIR}"
+        docker stop dns-relay-e2e-test-instance
+        set +e
+        docker cp dns-relay-e2e-test-instance:/test/sut/sut.log "${ARTIFACTS_DIR}"
+        set -e
+        docker rm --force dns-relay-e2e-test-instance
+    fi
+}
+
+on_exit() {
+    remove_container
+}
+
+on_error() {
+    remove_container
+}
+
+trap on_exit EXIT
+trap 'on_error ${?} ${LINENO}' ERR
+
+echo -e "\e[36mRunning e2e tests...\e[0m"
+
+E2E_TESTS_DIR="${SCRIPT_DIR}/e2e-tests"
+
+if [ -n "${PYTHON+x}" ]; then
+    E2E_TESTS_DOCKERFILE="${SCRIPT_DIR}/python.Dockerfile"
+    ARGS+=(--python)
+elif [ -n "${RUST+x}" ]; then
+    E2E_TESTS_DOCKERFILE="${SCRIPT_DIR}/rust.Dockerfile"
+    ARGS+=(--rust)
+else
+    E2E_TESTS_DOCKERFILE="${SCRIPT_DIR}/python.Dockerfile"
+    ARGS+=(--python)
+fi
+
+
+if [ -n "${DEBUG+x}" ]; then
+    docker build --build-arg "BUILD_OPT=" -t dns-relay-e2e-test:latest -f "${E2E_TESTS_DOCKERFILE}" "${SCRIPT_DIR}"
+else
+    docker build -t dns-relay-e2e-test:latest -f "${E2E_TESTS_DOCKERFILE}" "${SCRIPT_DIR}"
+fi
+
+rm -rf "${ARTIFACTS_DIR}"
+docker run --name dns-relay-e2e-test-instance dns-relay-e2e-test pytest "${ARGS[@]}"

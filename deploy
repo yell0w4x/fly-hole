@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+
+
+usage() {
+cat << EOF
+Adsfree
+
+Fly.io based DNS app deploy script
+A publicly available https://pi-hole.net on https://fly.io
+
+Usage:
+    ${0} [OPTIONS]
+
+Options:
+    --new               Launch new application using fly.toml template
+    --python            Use python DNS over HTTPS relay (set by default)
+    --rust              Use rust DNS over HTTPS relay
+    --app APP           Application name to use for deploy. Overrides one in toml file
+    --debug             Set bash 'x' option
+    --help              Show help message
+
+Examples:
+    Deploy new app.
+    
+        ./deploy --new --app myadsfree
+
+    Redeploy 
+        
+        ./deploy
+
+Note:
+    This script allocates shared ipv4 and ipv6 addresses that cost nothing
+    Dedicated ipv4 address costs \$2/month
+    
+    Deployed services
+
+    - DNS-over-HTTPS: https://myadsfree.fly.dev
+      Free of charge as works with shared ipv4
+      Test with \`dnslookup google.com https://myadsfree.fly.dev\`
+
+    - DNS-over-TLS: tls://myadsfree.fly.dev:853 (dedicated ipv4 only)
+
+    - Pi-hole admin: https://myadsfree.fly.dev:8443 (dedicated ipv4 only)
+      To access within shared ipv4 issue \`fly proxy 8080:80\` after deployment
+      then open in browser http://localhost:8080/admin
+      Password is printed during the deployment
+EOF
+}
+
+SCRIPT_DIR=$(realpath "$(dirname "${0}")")
+PYTHON=1
+
+while [ "${#}" -gt 0 ]; do
+    case "${1}" in
+        -h|--help)
+            usage
+            exit
+            ;;
+
+        --python)
+            PYTHON=1
+            unset RUST
+            ;;
+
+        --rust)
+            RUST=1
+            unset PYTHON
+            ;;
+
+        --app)
+            shift
+            APP_NAME="${1}"
+            ;;
+
+        --new)
+            NEW=1
+            ;;
+
+        --debug)
+            set -x
+            ;;
+
+        *)
+            echo "Unreconginzed argument: ${1}"
+            usage
+            exit 1
+            ;;
+    esac
+    
+   shift
+done
+
+
+if [ -z "$(command -v fly)" ]; then
+    curl -L https://fly.io/install.sh | sh
+fi 
+
+if [ -n "${PYTHON+x}" ]; then
+    echo -e "\e[36mUsing python DNS over HTTPS relay\e[0m"
+    DOCKER_FN=python.Dockerfile
+elif [ -n "${RUST+x}" ]; then
+    echo -e "\e[36mUsing rust DNS over HTTPS relay\e[0m"
+    DOCKER_FN=rust.Dockerfile
+else 
+    usage
+    exit 1
+fi
+
+pushd "${SCRIPT_DIR}" &> /dev/null
+
+set -eEu
+
+on_exit() {
+    popd &> /dev/null
+}
+
+trap on_exit EXIT
+
+if [ -n "${APP_NAME+x}" ]; then
+    FLY_TOML_FN="${SCRIPT_DIR}/fly.toml"
+    sed -i "s/app = \".*\"/app = \"${APP_NAME}\"/g" "${FLY_TOML_FN}"
+fi
+
+if [ -n "${NEW+x}" ]; then
+    ADMIN_PASSWD="$(cat /dev/random | tr -dc 0-9a-zA-Z | head -n 1 -c 12)"
+    yes no | fly launch --copy-config --dockerfile "${DOCKER_FN}" --path /tmp --no-deploy
+    fly ips allocate-v4 --shared
+    fly ips allocate-v6
+    fly secrets set WEBPASSWORD="${ADMIN_PASSWD}"
+    echo -e "\e[31m --> \e[36mAdmin password: ${ADMIN_PASSWD} \e[31m<--\e[0m"
+fi
+
+fly deploy --dockerfile "${DOCKER_FN}"
+
+APP_NAME=$(grep 'app = ".*"' fly.toml | sed -E 's/app = "(.*)"/\1/g')
+echo -e "\e[34mNote
+    - Test with \`dnslookup google.com https://${APP_NAME}.fly.dev\`
+    - If somehow doesn't work redeploy with \`./deploy\`
+    - To access pi-hole admin \`fly proxy 8080:80\` then http://localhost:8080/admin 
+    - For the admin password see above\e[0m"
