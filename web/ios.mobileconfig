@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Name</key>
+        <string>Adsfree DNS-over-HTTPS</string>
+        <key>PayloadDescription</key>
+        <string>Configures device to use Aadsfree encrypted DoH</string>
+        <key>PayloadDisplayName</key>
+        <string>DoH - adsfree.fly.dev</string>
+        <key>PayloadIdentifier</key>
+        <string>com.apple.dnsSettings.managed.AFCA1444-5AEB-44CD-B23D-5D1B3ADCD1F1</string>
+        <key>PayloadType</key>
+        <string>com.apple.dnsSettings.managed</string>
+        <key>PayloadUUID</key>
+        <string>293af945-8bcd-4a52-9f08-4071c22d8b85</string>
+        <key>PayloadVersion</key>
+        <integer>1</integer>
+        <key>DNSSettings</key>
+        <dict>
+            <key>DNSProtocol</key>
+            <string>HTTPS</string>
+            <key>ServerAddresses</key>
+            <array>
+                <string>2a09:8280:1::42:b246</string>
+                <string>66.241.125.228</string>
+            </array>
+            <key>ServerURL</key>
+            <string>https://adsfree.fly.dev</string>
+        </dict>
+    </dict>
+</plist>
