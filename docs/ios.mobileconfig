@@ -36,7 +36,7 @@
     <key>PayloadDescription</key>
     <string>Adds the Adsfree DNS to Big Sur and iOS based systems</string>
     <key>PayloadDisplayName</key>
-    <string>Adsfree DNS over TLS</string>
+    <string>Adsfree DNS over HTTPS</string>
     <key>PayloadIdentifier</key>
     <string>r.macOSBeta.0BD60CF6-64B5-4D16-BEA4-7294E93BDD4C</string>
     <key>PayloadRemovalDisallowed</key>
