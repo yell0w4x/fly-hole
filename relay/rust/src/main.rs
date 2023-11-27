@@ -149,7 +149,9 @@ fn wait_for_sigint() {
     }).expect("Error setting Ctrl-C handler");
 
     println!("Ctrl-C to quit");
-    while running.load(Ordering::SeqCst) {}
+    while running.load(Ordering::SeqCst) {
+        thread::sleep(Duration::from_millis(100));
+    }
     println!("Exiting...");    
 }
 
