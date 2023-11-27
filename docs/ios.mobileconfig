@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-    <dict>
+  <dict>
+    <key>PayloadContent</key>
+    <array>
+      <dict>
         <key>Name</key>
         <string>Adsfree DNS-over-HTTPS</string>
         <key>PayloadDescription</key>
@@ -29,4 +32,20 @@
             <string>https://adsfree.fly.dev</string>
         </dict>
     </dict>
+    </array>
+    <key>PayloadDescription</key>
+    <string>Adds the Adsfree DNS to Big Sur and iOS based systems</string>
+    <key>PayloadDisplayName</key>
+    <string>Adsfree DNS over TLS</string>
+    <key>PayloadIdentifier</key>
+    <string>r.macOSBeta.0BD60CF6-64B5-4D16-BEA4-7294E93BDD4C</string>
+    <key>PayloadRemovalDisallowed</key>
+    <false/>
+    <key>PayloadType</key>
+    <string>Configuration</string>
+    <key>PayloadUUID</key>
+    <string>01DA864C-C3AF-4039-A8D0-A00D982B1569</string>
+    <key>PayloadVersion</key>
+    <integer>1</integer>
+  </dict>
 </plist>
