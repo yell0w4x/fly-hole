@@ -61,7 +61,7 @@ done
 if [ -n "${PYTHON+x}" ]; then
     python3 -u /app/doh_relay.py > /app/doh_relay.log 2>&1 &
 elif [ -n "${RUST+x}" ]; then
-    /app/target/release/relay > /app/doh_relay.log 2>&1 &
+    /app/relay > /app/doh_relay.log 2>&1 &
 else 
     usage
     exit 1

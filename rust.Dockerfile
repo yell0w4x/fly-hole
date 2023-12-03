@@ -1,17 +1,21 @@
+FROM rust:1.74.0-bullseye AS relay-build
+
+COPY relay/rust /app/
+
+WORKDIR /app
+RUN cargo build --release
+
+###
 FROM pihole/pihole:latest
+COPY --from=relay-build /app/target/release/relay /app/relay
 
 RUN apt-get update --yes -o APT::Update::Error-Mode=any
-RUN apt-get install -y --no-install-recommends \
-    socat net-tools tcpdump tmux strace htop iperf build-essential
-
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+RUN apt-get install -y --no-install-recommends htop
 
 COPY start.sh /app/
-COPY relay/rust /app/
 COPY wait-for-it.sh /app/
 
 WORKDIR /app
-RUN ~/.cargo/bin/cargo build --release
 
 ENTRYPOINT ["/bin/bash", "/app/start.sh", "--rust"]
 
