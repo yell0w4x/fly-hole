@@ -1,10 +1,10 @@
 # fly-hole
 
-A publicly available [Pi-Hole](https://pi-hole.net) on [Fly.io](https://fly.io).
+A publicly available [Pi-Hole](https://pi-hole.net) on [Fly.io](https://fly.io) by means of DNS-over-HTTPS (DoH).
 
-Feel free to use DNS-over-HTTPS https://adsfree.fly.dev I deployed for myself.
+For ease of installation visit https://yell0w4x.github.io/fly-hole/.
+Feel free to use DoH `https://adsfree.fly.dev` I deployed for myself.
 Test it by https://d3ward.github.io/toolz/adblock.html.
-For ease of installation on iOS https://yell0w4x.github.io/fly-hole/.
 
 ```
 $ ./deploy --help
