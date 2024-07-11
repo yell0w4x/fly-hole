@@ -4,6 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::vec::Vec;
+use std::str;
 use ctrlc;
 use std::collections::HashMap;
 use querystring::querify;
@@ -32,9 +33,18 @@ fn dns_relay(dns_req: &Vec<u8>) -> Result<Vec<u8>, Box<dyn Error>>  {
 
 const DNS_MESSAGE_TYPE: &str = "application/dns-message";
 const CONTENT_TYPE: &str = "content-type";
+const FLY_CLIENT_IP: &str = "fly-client-ip";
 
 
 fn handle_dns(dns_req: &Vec<u8>, req: Request) {
+    if let Ok(ip_addr) = get_client_ip(&req) {
+        print!("Req from: {ip_addr}\n");
+    } 
+
+    if let Ok(req_str) = str::from_utf8(dns_req) {
+        print!("Req: {req_str}\n");
+    }
+
     let dns_resp: Vec<u8> = match dns_relay(&dns_req) {
         Ok(dns_resp) => dns_resp,
         Err(_e) => { 
@@ -43,11 +53,26 @@ fn handle_dns(dns_req: &Vec<u8>, req: Request) {
         }
     };
 
-    println!("dns_req: {:?}, dns_resp: {:?}", dns_req, dns_resp);
+    // println!("dns_req: {:?}, dns_resp: {:?}", dns_req, dns_resp);
     let mut resp = Response::from_data(dns_resp);
     resp.add_header(Header::from_bytes(CONTENT_TYPE.as_bytes(), DNS_MESSAGE_TYPE.as_bytes()).unwrap());
     let _ = req.respond(resp);
 }
+
+fn get_client_ip(req: &Request) -> Result<String, Box<dyn Error>> {
+    let headers_list = req.headers();
+    let mut headers: HashMap<String, String> = HashMap::new();
+    for header in headers_list {
+        headers.insert(header.field.as_str().as_str().to_ascii_lowercase(), 
+            header.value.as_str().to_ascii_lowercase());
+    }
+
+    if ! headers.contains_key(FLY_CLIENT_IP) {
+        bail!("No fly-client-ip header found")
+    } else {
+        Ok(headers.get(FLY_CLIENT_IP).unwrap().clone())
+    }
+} 
 
 fn check_content_type(req: &Request) -> Result<(), Box<dyn Error>> {
     let headers_list = req.headers();
@@ -123,7 +148,7 @@ fn handle_post(mut req: Request) {
 
 
 fn handle_root(uri: &Uri, req: Request) {
-    println!("URL: {}", req.url());
+    // println!("URL: {}", req.url());
 
     if req.method() == &Method::Get {
         handle_get(uri, req);
