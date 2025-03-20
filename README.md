@@ -2,9 +2,21 @@
 
 A publicly available [Pi-Hole](https://pi-hole.net) on [Fly.io](https://fly.io) by means of DNS-over-HTTPS (DoH).
 
+Why to use DoH? To increase the overall security. 
+Modern browsers deliver relatively new feature called ECH (Encrypted Client Hello) that relies on DoH. 
+Without having DoH enabled browsers can't use ECH. Why it's crucial to use ECH? The ECH enables SNI (Server Name Indication) encryption. 
+In nutshell SNI is the name of the web site you connect that is exposed in plain text without the ECH even 
+in TLS based protocols like HTTPS. So that's one of the way how you get blocked from visiting some web sites.
+
 For ease of installation visit https://yell0w4x.github.io/fly-hole/.
 Feel free to use DoH `https://adsfree.fly.dev` I deployed for myself.
-Test it by https://d3ward.github.io/toolz/adblock.html.
+Test it here https://adblock-tester.com/. Check whether SNI is encrypted [here](https://www.cloudflare.com/en-gb/ssl/encrypted-sni/).
+Or deploy your own DoH service with one simple command (fly.io free account required).
+
+In Firefox open `about:preferences#privacy` go to Enable DNS over HTTPS section. 
+Select Max Protection option and Custom provider, then put `https://adsfree.fly.dev` url into the textbox.
+
+The details on this available [here](https://support.mozilla.org/en-US/kb/firefox-dns-over-https#:~:text=Synergized%20protection%3A%20DoH%20works%20by,defense%20against%20many%20online%20threats).
 
 ```
 $ ./deploy --help
